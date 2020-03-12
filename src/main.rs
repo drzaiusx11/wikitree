@@ -1,10 +1,12 @@
 use actix_web::{web, get, post, web::Form, web::Path, App, HttpServer, HttpResponse, Result};
+use actix_files as fs;
 use std::fs::{write, create_dir_all, File};
 use std::io::{Read, Error, Result as IOResult};
 use serde::{Deserialize};
 use std::env;
 use std::path::Path as FilePath;
 use actix_web::http::StatusCode;
+use markdown;
 
 #[derive(Deserialize)]
 struct FormData {
@@ -84,9 +86,13 @@ async fn index(path: Path<(String,)>) -> Result<HttpResponse, Error> {
         let mut contents = String::new();
         file.read_to_string(&mut contents).expect("Unable to read the file");
 
+        let md = markdown::to_html(&contents);
         Ok(HttpResponse::Ok()
             .content_type("text/html")
-            .body(format!("<pre>{}</pre> <br><a href='{}'>edit</a>", contents, edit_url)))
+            .body(format!("<!DOCTYPE html>
+                 <html lang='en'><head><link rel='stylesheet' type='text/css' href='/assets/fonts.css'/></head>
+                 <body>\
+            {} <br><a href='{}'>edit</a></body></html>", md, edit_url)))
     }
     else {
         Ok(HttpResponse::Ok()
@@ -102,6 +108,10 @@ async fn main() -> IOResult<()> {
             .service(index)
             .service(edit_form)
             .service(edit_submit_handler)
+            .service(
+                // static files
+                fs::Files::new("/assets", "./static/").index_file("fonts.css"),
+            )
     })
     .bind("127.0.0.1:8088")?
     .run()
