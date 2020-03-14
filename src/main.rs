@@ -7,6 +7,7 @@ use std::env;
 use std::path::Path as FilePath;
 use actix_web::http::StatusCode;
 use markdown;
+mod pages;
 
 #[derive(Deserialize)]
 struct FormData {
@@ -22,23 +23,20 @@ struct EditFormQuery {
 #[get("/edit")]
 async fn edit_form(web::Query(q): web::Query<EditFormQuery>) -> Result<HttpResponse> {
     let file_path = get_file_path(&q.path)?;
-    let mut contents = format!("## title");
+    let mut contents = format!("## new page");
 
     if FilePath::new(&file_path).exists() {
         let mut file = File::open(file_path)
             .expect("Unable to open file");
 
         contents.clear();
-        file.read_to_string(&mut contents).expect("unable to read from file");
+        file.read_to_string(&mut contents)
+            .expect("unable to read from file");
     }
 
     Ok(HttpResponse::Ok()
         .content_type("text/html")
-        .body(format!("<form method='post' action='/edit'>\
-        <input type='hidden' name='path' value='{}'/>\
-        <textarea style='resize: none; width: 100%; height: calc(100% - 50px);' \
-        name='text'>{}</textarea>\
-        <input type='submit' value='submit'/><form>", q.path, contents)))
+        .body(pages::edit(&q.path, &contents)))
 }
 
 fn get_file_path(rel_path: &str) -> Result<String, Error> {
@@ -77,27 +75,25 @@ async fn edit_submit_handler(form: Form<FormData>) -> Result<HttpResponse, Error
 #[get("/view/{path:.*}")]
 async fn index(path: Path<(String,)>) -> Result<HttpResponse, Error> {
     let file_path = get_file_path(&path.0)?;
-    let edit_url = get_edit_url(&path.0);
+    let edit_link = get_edit_url(&path.0);
 
     if FilePath::new(&file_path).exists() {
         let mut file = File::open(file_path)
             .expect("Unable to open file");
 
         let mut contents = String::new();
-        file.read_to_string(&mut contents).expect("Unable to read the file");
+        file.read_to_string(&mut contents)
+            .expect("Unable to read the file");
 
         let md = markdown::to_html(&contents);
         Ok(HttpResponse::Ok()
             .content_type("text/html")
-            .body(format!("<!DOCTYPE html>
-                 <html lang='en'><head><link rel='stylesheet' type='text/css' href='/assets/fonts.css'/></head>
-                 <body>\
-            {} <br><a href='{}'>edit</a></body></html>", md, edit_url)))
+            .body(pages::view(&path.0,&md, &edit_link)))
     }
     else {
         Ok(HttpResponse::Ok()
             .status(StatusCode::FOUND)
-            .header("location", edit_url).body(""))
+            .header("location", edit_link).body(""))
     }
 }
 
@@ -110,7 +106,8 @@ async fn main() -> IOResult<()> {
             .service(edit_submit_handler)
             .service(
                 // static files
-                fs::Files::new("/assets", "./static/").index_file("fonts.css"),
+                fs::Files::new("/assets", "./static/")
+                    .index_file("main.css"),
             )
     })
     .bind("127.0.0.1:8088")?
