@@ -1,0 +1,37 @@
+* {
+	box-sizing: border-box;
+}
+
+html {
+	margin: 0;
+	height: 100%;
+}
+
+#page-container {
+	display: flex; /* displays flex-items (children) inline */
+	flex-direction: column; /* stacks them vertically */
+	height: 100%; /* needs to take the parents height, alternative: body {display: flex} */
+}
+
+.page-content {
+	flex: 1; /* takes the remaining height of the "container" div */
+	overflow: auto; /* to scroll just the "main" div */
+}
+
+form {
+	height: 100%;
+}
+
+body {
+	margin: 0;
+	padding: 8px 35px 15px 35px;
+	height: 100%;
+	font-family: Helvetica Neue,Helvetica,Arial,sans-serif;
+}
+
+textarea {
+	font-size: 15pt;
+	resize: none;
+	height: calc(100% - 20px);
+	width: 100%;
+}
